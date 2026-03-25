@@ -5,6 +5,7 @@ This File Define the Routing Table Class
 Routing Table Class define the lookup table for next hop
 """ 
 
+from core.link import Link
 
 class RoutingTable:
    
@@ -15,7 +16,7 @@ class RoutingTable:
     ):
         self.router_id = router_id
         # destination router id -> (next_hop router id, link class object)
-        self.table = {}
+        self.table: dict[str,tuple[str,Link]] = {}
 
     # inset a table entry
     def add_route(self, destination_router: str, next_hop: str, link):

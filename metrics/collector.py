@@ -23,7 +23,7 @@ class PacketEvent:
         packet_id: int,       # ID of the packet involved
         traffic_type: str,    # 'voip' | 'bulk' | 'best_effort'
         time: float,          # SimPy simulation time when event fired
-        extra: dict = None    # Optional extra data e.g. next_hop, delay
+        extra: dict = {}    # Optional extra data e.g. next_hop, delay
     ):
         self.router_id    = router_id
         self.packet_id    = packet_id
