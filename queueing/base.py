@@ -32,19 +32,19 @@ class QueueDiscipline:
         """Return True if the queue is full."""
         raise NotImplementedError("Subclasses must implement is_full()")
 
-    def __len__(self) -> int:
+    def length(self) -> int:
         """Return the current number of packets."""
-        raise NotImplementedError("Subclasses must implement __len__()")
+        raise NotImplementedError("Subclasses must implement length()")
     
     def is_empty(self) -> bool:
         """Return True when there are no packets waiting."""
-        return len(self) == 0
+        return self.length() == 0
     
     def capacity(self) -> int:
         return self.max_capacity
     
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(max={self.max_capacity}, count={len(self)})"
+        return f"{self.__class__.__name__}(max={self.max_capacity}, count={self.length()})"
 
 
 class EnqueueResult:

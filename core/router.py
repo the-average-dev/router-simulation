@@ -35,6 +35,7 @@ class Router:
         self.routing_table = routing_table
         self.collector = collector
         self.packet_ready = env.event()
+        self.deliver_to = None
         
         # Start the forwarding process
         env.process(self.forwarding_loop())
@@ -46,7 +47,7 @@ class Router:
         
         while True:
             
-            if self.queue.__len__() == 0:
+            if self.queue.length() == 0:
                 self.packet_ready = self.env.event()
                 yield self.packet_ready
                 
@@ -118,4 +119,4 @@ class Router:
 
     # Represenation of the Router
     def __repr__(self) -> str:
-        return f"Router({self.id}, queue_len={self.queue.__len__()})"
+        return f"Router({self.id}, queue_len={self.queue.length()})"

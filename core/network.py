@@ -7,7 +7,6 @@ Network Class hold the informationa bout all router and links. and gives router 
 """
 
 import logging
-from os import RTLD_DEEPBIND
 
 # use for creating and managing graphs
 import networkx as nx
@@ -18,7 +17,7 @@ from core.link import Link
 from core.packet import Packet
 from core.router import Router
 from metrics.collector import MetricsCollector
-from queueing.base import QueueDiscipline
+# from queueing.base import QueueDiscipline
 from routing.routing_table import RoutingTable
 
 log = logging.getLogger(__name__)
@@ -102,7 +101,7 @@ class Network:
             router.set_delivery_callback(self.resolve_router)
             self.routers[router_id] = router
 
-            log.debug("Built router %s with table: %s", router_id, rt)
+            log.debug("Built router %s with table: %s", router_id, routing_table)
 
         log.info(
             "Network built: %d routers, %d directed links",
@@ -133,7 +132,7 @@ class Network:
                         link = self.links.get((source, next_hop))
                         if link:
                             router.add_route(destination, next_hop, link)
-                except nx.NetworkXNoPath:
+                except NetworkXNoPath:
                     log.debug("No path from %s to %s", source, destination)
 
             tables[source] = router
