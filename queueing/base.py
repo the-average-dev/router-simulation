@@ -6,7 +6,6 @@ This file contains the blueprint for all queueing disciplines, including result 
 """
 
 
-
 class QueueDiscipline:
     """
     Base class for all queue types (FIFO, PQ, etc.).
@@ -16,14 +15,13 @@ class QueueDiscipline:
     def __init__(self, capacity: int):
         if capacity == 0:
             raise ValueError("Capacity must be >= 1 (or -1 for unbounded).")
-        self.max_capacity:int = capacity
+        self.max_capacity: int = capacity
         self.stats = QueueStats()
 
     def enqueue(self, packet) -> bool:
         """Attempt to add packet. Returns True/False or EnqueueResult."""
         raise NotImplementedError("Subclasses must implement enqueue()")
-        
-    
+
     def dequeue(self):
         """Remove and return the next packet. Returns None if empty."""
         raise NotImplementedError("Subclasses must implement dequeue()")
@@ -35,22 +33,25 @@ class QueueDiscipline:
     def length(self) -> int:
         """Return the current number of packets."""
         raise NotImplementedError("Subclasses must implement length()")
-    
+
     def is_empty(self) -> bool:
         """Return True when there are no packets waiting."""
         return self.length() == 0
-    
+
     def capacity(self) -> int:
         return self.max_capacity
-    
+
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(max={self.max_capacity}, count={self.length()})"
+        return (
+            f"{self.__class__.__name__}(max={self.max_capacity}, count={self.length()})"
+        )
 
 
 class EnqueueResult:
     """
     Used when the metrics collector needs to record WHY a packet was dropped.
     """
+
     __slots__ = ("accepted", "reason")
 
     REASONS = {"tail_drop", "red_drop", "token_exhausted", "admitted"}
@@ -66,7 +67,6 @@ class EnqueueResult:
 
     def __repr__(self) -> str:
         return f"EnqueueResult(accepted={self.accepted}, reason='{self.reason}')"
-
 
 
 class QueueStats:
@@ -89,7 +89,7 @@ class QueueStats:
         drop_rate = self.dropped / total if total > 0 else 0.0
         return {
             "enqueued": self.enqueued,
-            "dropped":  self.dropped,
+            "dropped": self.dropped,
             "dequeued": self.dequeued,
             "drop_rate": round(drop_rate, 4),
         }

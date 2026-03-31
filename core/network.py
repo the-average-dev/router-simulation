@@ -17,6 +17,7 @@ from core.link import Link
 from core.packet import Packet
 from core.router import Router
 from metrics.collector import MetricsCollector
+
 # from queueing.base import QueueDiscipline
 from routing.routing_table import RoutingTable
 
@@ -109,8 +110,6 @@ class Network:
             len(self.links),
         )
 
-
-
     # fallback algorithm in case the user specify routing algorithm is not specify
     # may get remove in future
     def fall_back_routing_algorithm(self) -> dict[str, RoutingTable]:
@@ -142,33 +141,31 @@ class Network:
     def resolve_router(self, router_id: str) -> Router | None:
         return self.routers.get(router_id)
 
-
     # to inject a packet at specify router
-    def inject(self,packet:Packet,at_router:str):
+    def inject(self, packet: Packet, at_router: str):
         router = self.routers.get(at_router)
         if router is None:
             raise ValueError(f"Router '{at_router}' not found in network")
-            
+
         router.receive(packet)
-        
-    def get_router(self,router_id:str) -> Router | None:
+
+    def get_router(self, router_id: str) -> Router | None:
         return self.routers.get(router_id)
-        
+
     def router_ids(self) -> list[str]:
         return list(self.routers.keys())
-        
+
     # to simulate link failure
-    def take_down_link(self,source_id:str,destination_id:str):
-        link = self.links.get((source_id,destination_id))
-        
+    def take_down_link(self, source_id: str, destination_id: str):
+        link = self.links.get((source_id, destination_id))
+
         if link:
             link.is_up = False
             log.warning("Link %s→%s is now DOWN", source_id, destination_id)
-    
-    def bring_up_link(self,source_id:str,destination_id:str):
-        link = self.links.get((source_id,destination_id))
-        
+
+    def bring_up_link(self, source_id: str, destination_id: str):
+        link = self.links.get((source_id, destination_id))
+
         if link:
             link.is_up = True
             log.info("Link %s→%s is back UP", source_id, destination_id)
-    
