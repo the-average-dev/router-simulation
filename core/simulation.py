@@ -70,7 +70,17 @@ class Simulation:
             routing_algorithm=self.routing_algorithm,
         )
 
-        # TODO build the topology one implenmented topology factory nad genreate traffic and start simulation
+        self.topology_factory(network, self.config)
+        network.build()
+
+        env.process(self.traffic_generator(env, network, self.config))
+
+        log.info("Running simulation for %.1f time units...", duration)
+        env.run(until=duration)
+        log.info("Simulation complete.")
+        
+        return self.collector
+        
 
     # load a json config file and return as dict
     def load_config(self, path: str) -> dict:
