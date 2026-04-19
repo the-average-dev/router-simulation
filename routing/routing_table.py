@@ -1,4 +1,5 @@
 """
+<<<<<<< HEAD
 routing/routing_table.py
 ========================
 Per-router next-hop lookup table.
@@ -28,11 +29,25 @@ LinkId   = Hashable
 
 # Each entry: (next_hop_router_id, link_id)
 NextHopEntry = Tuple[RouterId, LinkId]
+=======
+This File Define the Routing Table Class
+Routing Table Class define the lookup table for next hop
+"""
+>>>>>>> 6fa84b42036eacf39e9096a409cddab169a68983
+
 
 
 class RoutingTable:
+<<<<<<< HEAD
     """
     Next-hop routing table for one router.
+=======
+    # Constructor
+    def __init__(self, router_id: str):
+        self.router_id = router_id
+        # destination router id -> (next_hop router id, link class object)
+        self.table: dict[str, tuple[str, Link]] = {}
+>>>>>>> 6fa84b42036eacf39e9096a409cddab169a68983
 
     Parameters
     ----------
@@ -49,9 +64,15 @@ class RoutingTable:
     None
     """
 
+<<<<<<< HEAD
     def __init__(self, owner_id: RouterId) -> None:
         self.owner_id: RouterId = owner_id
         self._table: Dict[RouterId, NextHopEntry] = {}
+=======
+    # remove the table entry
+    def remove_route(self, dst: str):
+        self.table.pop(dst, None)
+>>>>>>> 6fa84b42036eacf39e9096a409cddab169a68983
 
     # ------------------------------------------------------------------
     # Mutation
@@ -152,6 +173,7 @@ class RoutingTable:
     # ------------------------------------------------------------------
 
     def __repr__(self) -> str:
+<<<<<<< HEAD
         return f"RoutingTable(owner={self.owner_id!r}, entries={len(self._table)})"
 
     def pretty_print(self) -> str:
@@ -196,3 +218,7 @@ def build_routing_tables(
         rt.update_from_dict(entries)
         tables[owner] = rt
     return tables
+=======
+        routes = ", ".join(f"{dst}→{nh}" for dst, (nh, _) in self.table.items())
+        return f"RoutingTable({self.router_id}: [{routes}])"
+>>>>>>> 6fa84b42036eacf39e9096a409cddab169a68983

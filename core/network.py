@@ -7,7 +7,6 @@ Network Class hold the informationa bout all router and links. and gives router 
 """
 
 import logging
-from os import RTLD_DEEPBIND
 
 # use for creating and managing graphs
 import networkx as nx
@@ -18,7 +17,8 @@ from core.link import Link
 from core.packet import Packet
 from core.router import Router
 from metrics.collector import MetricsCollector
-from queueing.base import QueueDiscipline
+
+# from queueing.base import QueueDiscipline
 from routing.routing_table import RoutingTable
 
 log = logging.getLogger(__name__)
@@ -102,15 +102,13 @@ class Network:
             router.set_delivery_callback(self.resolve_router)
             self.routers[router_id] = router
 
-            log.debug("Built router %s with table: %s", router_id, rt)
+            log.debug("Built router %s with table: %s", router_id, routing_table)
 
         log.info(
             "Network built: %d routers, %d directed links",
             len(self.routers),
             len(self.links),
         )
-
-
 
     # fallback algorithm in case the user specify routing algorithm is not specify
     # may get remove in future
@@ -133,7 +131,7 @@ class Network:
                         link = self.links.get((source, next_hop))
                         if link:
                             router.add_route(destination, next_hop, link)
-                except nx.NetworkXNoPath:
+                except NetworkXNoPath:
                     log.debug("No path from %s to %s", source, destination)
 
             tables[source] = router
@@ -143,33 +141,31 @@ class Network:
     def resolve_router(self, router_id: str) -> Router | None:
         return self.routers.get(router_id)
 
-
     # to inject a packet at specify router
-    def inject(self,packet:Packet,at_router:str):
+    def inject(self, packet: Packet, at_router: str):
         router = self.routers.get(at_router)
         if router is None:
             raise ValueError(f"Router '{at_router}' not found in network")
-            
+
         router.receive(packet)
-        
-    def get_router(self,router_id:str) -> Router | None:
+
+    def get_router(self, router_id: str) -> Router | None:
         return self.routers.get(router_id)
-        
+
     def router_ids(self) -> list[str]:
         return list(self.routers.keys())
-        
+
     # to simulate link failure
-    def take_down_link(self,source_id:str,destination_id:str):
-        link = self.links.get((source_id,destination_id))
-        
+    def take_down_link(self, source_id: str, destination_id: str):
+        link = self.links.get((source_id, destination_id))
+
         if link:
             link.is_up = False
             log.warning("Link %s→%s is now DOWN", source_id, destination_id)
-    
-    def bring_up_link(self,source_id:str,destination_id:str):
-        link = self.links.get((source_id,destination_id))
-        
+
+    def bring_up_link(self, source_id: str, destination_id: str):
+        link = self.links.get((source_id, destination_id))
+
         if link:
             link.is_up = True
             log.info("Link %s→%s is back UP", source_id, destination_id)
-    
