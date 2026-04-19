@@ -1,26 +1,11 @@
-"""
-tests/test_algorithms.py
-========================
-Unit tests for all queue disciplines and routing algorithms.
-
-Run with:
-    pytest tests/test_algorithms.py -v
-
-Each test section is self-contained — no SimPy, no core/ needed.
-A minimal MockPacket stands in for the real Packet dataclass.
-"""
-
 from __future__ import annotations
-
 import math
 import sys
 import os
 import pytest
 import networkx as nx
 
-# ---------------------------------------------------------------------------
-# Make the project root importable when running from repo root
-# ---------------------------------------------------------------------------
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from queueing.base import QueueDiscipline, EnqueueResult, StatsTrackingMixin
@@ -37,17 +22,12 @@ from routing.bellman_ford import (
 )
 
 
-# ===========================================================================
-# Shared fixture: MockPacket
-# ===========================================================================
-
 class MockPacket:
-    """Minimal stand-in for core/packet.py Packet dataclass."""
-    _id_counter = 0
+    id_cnt = 0
 
     def __init__(self, priority: int = 0, size: int = 100, birth_time: float = 0.0):
-        MockPacket._id_counter += 1
-        self.id         = MockPacket._id_counter
+        MockPacket.id_cnt += 1
+        self.id         = MockPacket.id_cnt
         self.priority   = priority
         self.size       = size
         self.birth_time = birth_time
@@ -60,34 +40,30 @@ def make_pkts(n: int, priority: int = 0, size: int = 100) -> list[MockPacket]:
     return [MockPacket(priority=priority, size=size) for _ in range(n)]
 
 
-# ===========================================================================
-# FIFO Tests
-# ===========================================================================
+
 
 class TestFifoQueue:
 
     def test_enqueue_dequeue_order(self):
-        """Packets must come out in the same order they went in."""
         q = FifoQueue(capacity=5)
-        pkts = make_pkts(4)
-        for p in pkts:
+        pckt = make_pkts(4)
+        for p in pckt:
             assert q.enqueue(p) is True
-        for p in pkts:
+        for p in pckt:
             assert q.dequeue() is p
 
-    def test_tail_drop_when_full(self):
-        """Packets arriving at a full queue must be dropped."""
+    def tail_drop_if_full(self):
         q = FifoQueue(capacity=3)
-        pkts = make_pkts(5)
-        results = [q.enqueue(p) for p in pkts]
-        assert results == [True, True, True, False, False]
+        pckt = make_pkts(5)
+        res = [q.enqueue(p) for p in pckt]
+        assert res == [True, True, True, False, False]
         assert len(q) == 3
 
-    def test_dequeue_empty_returns_none(self):
+    def tets_dequeue_empty(self):
         q = FifoQueue(capacity=4)
         assert q.dequeue() is None
 
-    def test_is_full_is_empty(self):
+    def test_full_empty(self):
         q = FifoQueue(capacity=2)
         assert q.is_empty()
         assert not q.is_full()
@@ -97,7 +73,7 @@ class TestFifoQueue:
         q.enqueue(MockPacket())
         assert q.is_full()
 
-    def test_peek_does_not_remove(self):
+    def test_peek_not_remove(self):
         q = FifoQueue(capacity=4)
         p = MockPacket()
         q.enqueue(p)
@@ -106,11 +82,11 @@ class TestFifoQueue:
 
     def test_flush_drains_queue(self):
         q = FifoQueue(capacity=4)
-        pkts = make_pkts(3)
-        for p in pkts:
+        pckt = make_pkts(3)
+        for p in pckt:
             q.enqueue(p)
         drained = q.flush()
-        assert drained == pkts
+        assert drained == pckt
         assert q.is_empty()
 
     def test_stats_tracking(self):
@@ -126,14 +102,13 @@ class TestFifoQueue:
             FifoQueue(capacity=0)
 
 
-# ===========================================================================
-# Priority Queue Tests
-# ===========================================================================
+
+
+
 
 class TestPriorityQueue:
 
     def test_higher_priority_served_first(self):
-        """Lowest priority value (highest urgency) must be dequeued first."""
         q = PriorityQueue(capacity=10)
         bulk  = MockPacket(priority=2)
         voip  = MockPacket(priority=0)
@@ -141,12 +116,11 @@ class TestPriorityQueue:
         q.enqueue(bulk)
         q.enqueue(voip)
         q.enqueue(best)
-        assert q.dequeue() is voip   # priority 0
-        assert q.dequeue() is best   # priority 1
-        assert q.dequeue() is bulk   # priority 2
+        assert q.dequeue() is voip   
+        assert q.dequeue() is best   
+        assert q.dequeue() is bulk   
 
     def test_fifo_within_same_priority(self):
-        """Equal-priority packets should be served in arrival order."""
         q = PriorityQueue(capacity=10)
         p1, p2, p3 = [MockPacket(priority=1) for _ in range(3)]
         for p in (p1, p2, p3):
@@ -157,10 +131,10 @@ class TestPriorityQueue:
 
     def test_tail_drop_on_full(self):
         q = PriorityQueue(capacity=2)
-        pkts = [MockPacket(priority=i) for i in range(4)]
-        results = [q.enqueue(p) for p in pkts]
-        assert results[:2] == [True, True]
-        assert results[2:] == [False, False]
+        pckt = [MockPacket(priority=i) for i in range(4)]
+        res = [q.enqueue(p) for p in pckt]
+        assert res[:2] == [True, True]
+        assert res[2:] == [False, False]
 
     def test_empty_dequeue_returns_none(self):
         q = PriorityQueue(capacity=5)
@@ -169,8 +143,8 @@ class TestPriorityQueue:
     def test_flush_returns_priority_order(self):
         q = PriorityQueue(capacity=10)
         priorities = [2, 0, 1, 0, 2]
-        pkts = [MockPacket(priority=p) for p in priorities]
-        for p in pkts:
+        pckt = [MockPacket(priority=p) for p in priorities]
+        for p in pckt:
             q.enqueue(p)
         drained = q.flush()
         served_priorities = [p.priority for p in drained]
@@ -184,17 +158,10 @@ class TestPriorityQueue:
         assert q.stats["enqueued"] == 3
 
 
-# ===========================================================================
-# WFQ Tests
-# ===========================================================================
-
 class TestWFQQueue:
 
     def test_high_weight_class_served_first(self):
-        """
-        With weights {0: 10, 1: 1} and equal-size packets, class-0 should
-        have a much smaller virtual finish time and be served first.
-        """
+        
         q = WFQQueue(capacity=20, weights={0: 10, 1: 1})
         low  = MockPacket(priority=1, size=100)
         high = MockPacket(priority=0, size=100)
@@ -205,20 +172,20 @@ class TestWFQQueue:
 
     def test_all_packets_eventually_served(self):
         q = WFQQueue(capacity=20, weights={0: 5, 1: 2, 2: 1})
-        pkts = [MockPacket(priority=i % 3, size=100) for i in range(9)]
-        for p in pkts:
+        pckt = [MockPacket(priority=i % 3, size=100) for i in range(9)]
+        for p in pckt:
             q.enqueue(p)
         served = []
         while not q.is_empty():
             served.append(q.dequeue())
         assert len(served) == 9
-        assert set(id(p) for p in served) == set(id(p) for p in pkts)
+        assert set(id(p) for p in served) == set(id(p) for p in pckt)
 
     def test_tail_drop_on_overflow(self):
         q = WFQQueue(capacity=3, weights={0: 1})
-        results = [q.enqueue(MockPacket(priority=0)) for _ in range(5)]
-        assert results[:3] == [True, True, True]
-        assert results[3:] == [False, False]
+        res = [q.enqueue(MockPacket(priority=0)) for _ in range(5)]
+        assert res[:3] == [True, True, True]
+        assert res[3:] == [False, False]
 
     def test_empty_dequeue_returns_none(self):
         q = WFQQueue(capacity=5)
@@ -233,67 +200,56 @@ class TestWFQQueue:
 
     def test_flush(self):
         q = WFQQueue(capacity=5, weights={0: 1})
-        pkts = make_pkts(3, priority=0)
-        for p in pkts:
+        pckt = make_pkts(3, priority=0)
+        for p in pckt:
             q.enqueue(p)
         drained = q.flush()
         assert len(drained) == 3
         assert q.is_empty()
 
 
-# ===========================================================================
-# RED Tests
-# ===========================================================================
-
 class TestREDQueue:
 
     def test_below_min_th_no_drops(self):
-        """Below min_th, RED must never drop."""
-        q = REDQueue(capacity=100, min_th=20, max_th=80, max_p=0.1, seed=42)
-        # Enqueue 10 packets — well below min_th=20
+        q = REDQueue(capacity=100, t_min=20, t_max=80, p_max=0.1, seed=42)
+        
         for _ in range(10):
             assert q.enqueue(MockPacket()) is True
 
     def test_above_max_th_all_dropped(self):
-        """
-        Force avg_len above max_th by filling past it, then verify drops.
-        We push the EWMA up by stuffing many packets.
-        """
-        q = REDQueue(capacity=200, min_th=5, max_th=10, max_p=1.0, w_q=0.5, seed=0)
-        # Fill to avg_len >> max_th
+        
+        q = REDQueue(capacity=200, t_min=5, t_max=10, p_max=1.0, wq=0.5, seed=0)
+        
         for _ in range(50):
             q.enqueue(MockPacket())
-        # avg should now be >> 10; all new arrivals should drop
-        assert q.avg_queue_len > q.max_th
-        # The next enqueue should be dropped (p=1.0 at max_th)
-        # drain a bit first to avoid hard tail-drop
+        
+        assert q.avg_queue_len > q.t_max
+        
+        
         for _ in range(40):
             q.dequeue()
-        # Re-fill to push avg high again
+        
         for _ in range(50):
             q.enqueue(MockPacket())
-        assert q.avg_queue_len > q.max_th
+        assert q.avg_queue_len > q.t_max
 
     def test_tail_drop_hard_capacity(self):
-        """Hard capacity must always be enforced regardless of RED state."""
-        q = REDQueue(capacity=5, min_th=2, max_th=4, max_p=0.1, seed=99)
-        results = []
+        q = REDQueue(capacity=5, t_min=2, t_max=4, p_max=0.1, seed=99)
+        res = []
         for _ in range(10):
-            results.append(q.enqueue(MockPacket()))
-        # At most 5 can be admitted (hard cap)
-        assert sum(results) <= 5
+            res.append(q.enqueue(MockPacket()))
+        
+        assert sum(res) <= 5
 
     def test_enqueue_detailed_reasons(self):
-        """enqueue_detailed must return EnqueueResult with correct reasons."""
-        q = REDQueue(capacity=3, min_th=1, max_th=2, max_p=1.0, w_q=0.9, seed=7)
-        results = [q.enqueue_detailed(MockPacket()) for _ in range(6)]
-        reasons = {r.reason for r in results}
-        # We expect at least 'admitted' and at least one drop reason
+        q = REDQueue(capacity=3, t_min=1, t_max=2, p_max=1.0, wq=0.9, seed=7)
+        res = [q.enqueue_detailed(MockPacket()) for _ in range(6)]
+        reasons = {r.reason for r in res}
+        
         assert "admitted" in reasons
 
     def test_dequeue_fifo_within_red(self):
-        """Packets that survive RED must come out in FIFO order."""
-        q = REDQueue(capacity=50, min_th=40, max_th=45, max_p=0.1, seed=0)
+        q = REDQueue(capacity=50, t_min=40, t_max=45, p_max=0.1, seed=0)
         admitted = []
         for _ in range(10):
             p = MockPacket()
@@ -304,19 +260,15 @@ class TestREDQueue:
 
     def test_invalid_thresholds_raise(self):
         with pytest.raises(ValueError):
-            REDQueue(capacity=10, min_th=50, max_th=80)   # min_th > capacity
+            REDQueue(capacity=10, t_min=50, t_max=80)   
 
     def test_avg_queue_len_property(self):
-        q = REDQueue(capacity=100, min_th=20, max_th=80, seed=0)
+        q = REDQueue(capacity=100, t_min=20, t_max=80, seed=0)
         assert q.avg_queue_len == 0.0
         for _ in range(10):
             q.enqueue(MockPacket())
         assert q.avg_queue_len > 0.0
 
-
-# ===========================================================================
-# RoutingTable Tests
-# ===========================================================================
 
 class TestRoutingTable:
 
@@ -383,12 +335,11 @@ class TestRoutingTable:
         assert tables["R2"].lookup("R3") == ("R3", "L23")
 
 
-# ===========================================================================
-# Dijkstra Tests
-# ===========================================================================
+
+
+
 
 def _linear_graph():
-    """R1 -- R2 -- R3 -- R4 (equal weights)"""
     G = nx.Graph()
     G.add_edge("R1", "R2", weight=1, link_id="L12")
     G.add_edge("R2", "R3", weight=1, link_id="L23")
@@ -397,12 +348,6 @@ def _linear_graph():
 
 
 def _weighted_graph():
-    """
-    R1 --(1)-- R2 --(10)-- R3
-     \                    /
-      ------(3)-----------
-    Direct path R1→R3 via weight-3 edge is shorter than via R2 (1+10=11).
-    """
     G = nx.Graph()
     G.add_edge("R1", "R2", weight=1,  link_id="L12")
     G.add_edge("R2", "R3", weight=10, link_id="L23")
@@ -418,14 +363,12 @@ class TestDijkstra:
         assert rt.lookup("R2") == ("R2", "L12")
 
     def test_multi_hop_next_hop(self):
-        """R1 → R4 should route via R2 first."""
         G = _linear_graph()
         rt = dijkstra_single_source(G, "R1")
         assert rt.next_hop("R4") == "R2"
         assert rt.link_for("R4") == "L12"
 
     def test_weighted_shortest_path(self):
-        """R1 should reach R3 via direct link L13 (cost 3), not via R2 (cost 11)."""
         G = _weighted_graph()
         rt = dijkstra_single_source(G, "R1")
         assert rt.next_hop("R3") == "R3"
@@ -437,7 +380,6 @@ class TestDijkstra:
         assert set(tables.keys()) == {"R1", "R2", "R3", "R4"}
 
     def test_symmetry(self):
-        """Undirected graph: R1→R4 and R4→R1 paths should mirror each other."""
         G = _linear_graph()
         tables = dijkstra_all(G)
         assert tables["R1"].next_hop("R4") == "R2"
@@ -446,7 +388,7 @@ class TestDijkstra:
     def test_unreachable_node_has_no_entry(self):
         G = nx.Graph()
         G.add_node("R1")
-        G.add_node("R2")   # isolated — no edges
+        G.add_node("R2")   
         rt = dijkstra_single_source(G, "R1")
         assert rt.lookup("R2") is None
 
@@ -457,9 +399,6 @@ class TestDijkstra:
         assert len(rt) == 0
 
 
-# ===========================================================================
-# Bellman-Ford Tests
-# ===========================================================================
 
 class TestBellmanFord:
 
@@ -501,23 +440,20 @@ class TestBellmanFord:
                 assert bf_tables[node].lookup(dst) == dij_tables[node].lookup(dst)
 
     def test_recompute_after_link_failure(self):
-        """
-        After removing R2-R3, R1 should still reach R3 via R4 (if edge exists),
-        or have no route if the graph is now partitioned.
-        """
+        
         G = nx.Graph()
         G.add_edge("R1", "R2", weight=1, link_id="L12")
         G.add_edge("R2", "R3", weight=1, link_id="L23")
-        G.add_edge("R1", "R3", weight=5, link_id="L13")   # backup
+        G.add_edge("R1", "R3", weight=5, link_id="L13")   
 
         router = BellmanFordRouter(G)
         tables = router.compute()
-        assert tables["R1"].next_hop("R3") == "R2"       # cheaper via R2
+        assert tables["R1"].next_hop("R3") == "R2"       
 
-        # Simulate failure of L12 (R1-R2 goes down)
+        
         G.remove_edge("R1", "R2")
         tables = router.recompute()
-        # Now only R1→R3 directly via L13
+        
         assert tables["R1"].next_hop("R3") == "R3"
         assert tables["R1"].link_for("R3") == "L13"
 
@@ -537,19 +473,15 @@ class TestBellmanFord:
             bellman_ford_single_source(G, "R1")
 
 
-# ===========================================================================
-# Cross-discipline sanity checks
-# ===========================================================================
 
 class TestCrossDiscipline:
 
     def test_all_disciplines_share_base_interface(self):
-        """Every discipline must satisfy the QueueDiscipline ABC."""
         disciplines = [
             FifoQueue(capacity=10),
             PriorityQueue(capacity=10),
             WFQQueue(capacity=10),
-            REDQueue(capacity=100, min_th=20, max_th=80),
+            REDQueue(capacity=100, t_min=20, t_max=80),
         ]
         for q in disciplines:
             assert isinstance(q, QueueDiscipline)
