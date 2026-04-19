@@ -46,7 +46,7 @@ class SimComparator:
 
         # compute percentage difference for each metric
         delta_queue = self._delta(sim_avg_queue_len, theory.exp_queue_len)
-        delta_delay = self._delta(sim_avg_delay,     theory.exp_delay)
+        delta_delay = self._delta(sim_avg_delay, theory.exp_delay)
 
         # pass if under 5%
         queue_status = "PASS" if delta_queue < 5.0 else "FAIL"
