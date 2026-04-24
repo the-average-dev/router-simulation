@@ -15,14 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 class PacketEvent:
-    # Constructor
     def __init__(
         self,
-        router_id: str,  # ID of the router where event occurred e.g. 'R1'
-        packet_id: int,  # ID of the packet involved
-        traffic_type: str,  # 'voip' | 'bulk' | 'best_effort'
-        time: float,  # SimPy simulation time when event fired
-        extra: dict = {},  # Optional extra data e.g. next_hop, delay
+        router_id: str,
+        packet_id: int,
+        traffic_type: str,
+        time: float,
+        extra: dict | None = None,  # Set default to None
     ):
         self.router_id = router_id
         self.packet_id = packet_id
@@ -44,11 +43,11 @@ class PacketEvent:
 class MetricsCollector:
     # Constructor — initializes one list per event type
     def __init__(self):
-        self.arrivals: list[PacketEvent] = []  # every packet that reaches a router
-        self.enqueues: list[PacketEvent] = []  # every packet successfully queued
-        self.drops: list[PacketEvent] = []  # every packet dropped (queue full)
-        self.forwards: list[PacketEvent] = []  # every packet sent to next hop
-        self.deliveries: list[PacketEvent] = []  # every packet that reached destination
+        self.arrivals: list = []  # every packet that reaches a router
+        self.enqueues: list = []  # every packet successfully queued
+        self.drops: list = []  # every packet dropped (queue full)
+        self.forwards: list = []  # every packet sent to next hop
+        self.deliveries: list = []  # every packet that reached destination
 
     # Contract Methods
 
@@ -96,7 +95,7 @@ class MetricsCollector:
                 packet_id=packet.id,
                 traffic_type=packet.traffic_type,
                 time=time,
-                extra={"next_hop": next_hop},  # store where it was sent
+                extra={"next_hop": next_hop},
             )
         )
         logger.debug(
@@ -118,16 +117,14 @@ class MetricsCollector:
                 traffic_type=packet.traffic_type,
                 time=time,
                 extra={
-                    "arrival_time": packet.arrival_time,  # birth time of the packet
-                    "delay": delay,  # end-to-end delay in seconds
+                    "arrival_time": packet.arrival_time,
+                    "delay": delay,
                 },
             )
         )
         logger.debug("DELIVER  pkt=%s delay=%.4f", packet.id, delay)
 
-    # Helper Method
     # Returns a quick count of all recorded events
-    # Can call this while testing router.py to confirm hooks fire
     def summary(self) -> dict:
         return {
             "total_arrivals": len(self.arrivals),

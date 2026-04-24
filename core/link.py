@@ -34,19 +34,20 @@ class Link:
 
     # calculate the delay and simulate the transmission of a packet from one router to another
     def transmit(self, packet):
-
         if not self.is_up:
             log.warning(
                 f"Link {self.src_id}->{self.dst_id} DOWN. Packet {packet.id} dropped."
             )
-            return
+            return False  # Indicate transmission failure
 
         tx_delay = (packet.size * 8) / self.bandwidth
         total_delay = tx_delay + self.delay
 
         with self.resource.request() as req:
-            yield req  # Wait until the link is free
-            yield self.env.timeout(total_delay)  # Simulate travel time
+            yield req
+            yield self.env.timeout(total_delay)
+
+        return True  # Indicate transmission success
 
     # Representation of the Packet Transmission
     def __repr__(self) -> str:

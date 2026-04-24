@@ -14,11 +14,10 @@ CLASS_PRIORITY = {
 
 
 class Packet:
-    # Constructor
     def __init__(
         self,
         id: int,
-        size: int,  # will be in bytes
+        size: int,
         source: str,
         destination: str,
         traffic_type: str,
@@ -31,6 +30,7 @@ class Packet:
         self.traffic_type = traffic_type
         self.arrival_time = arrival_time
 
+        self.priority = CLASS_PRIORITY.get(traffic_type, 4)
         # check traffic type
         if traffic_type not in CLASS_PRIORITY:
             raise ValueError(f"Unknown Traffic Type: {traffic_type}")

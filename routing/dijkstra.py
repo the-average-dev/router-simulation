@@ -1,31 +1,45 @@
-from __future__ import annotations
+# filename: routing/dijkstra.py
+
+"""
+This File Defines the Dijkstra Routing Algorithm
+Takes the full network graph and links dict.
+Returns a routing table for every router. Pre-computed once at startup.
+Called by network.py as: routing_algorithm(graph, links)
+"""
+
 import heapq
-from typing import Any, Dict, Hashable, Optional
+import logging
+
 import networkx as nx
-from routing.routing_table import RoutingTable, RouterId, LinkId, build_routing_tables
+
+from routing.routing_table import RoutingTable
+
+log = logging.getLogger(__name__)
+
 INF = float("inf")
 
 
-def edge_weight(graph: nx.Graph, u: RouterId, v: RouterId) -> float:
-    return graph[u][v].get("weight", 1)
-
-
-def edge_linkid(graph: nx.Graph, u: RouterId, v: RouterId) -> LinkId:
-    return graph[u][v].get("link_id", (u, v))
-
-
-def dijkstra_single_source(
-    graph: nx.Graph,
-    source: RouterId,
-) -> RoutingTable:
+def _edge_weight(graph: nx.DiGraph, u: str, v: str) -> float:
+    data = graph[u][v]
     
-    
-    dist: Dict[RouterId, float] = {source: 0.0}
-    prev: Dict[RouterId, Optional[tuple]] = {source: None}
+    # Check if the link object exists and is currently DOWN
+    link = data.get("link")
+    if link is not None and not link.is_up:
+        return float('inf')  # Infinite cost so the algorithm avoids it!
+        
+    weight = data.get("weight", 1)
+    if callable(weight):
+        return weight()
+    return float(weight)
 
-    heap: list[tuple[float, Any]] = [(0.0, source)]
 
-    visited: set[RouterId] = set()
+def dijkstra_single_source(graph: nx.DiGraph, source: str, links: dict) -> RoutingTable:
+
+    dist: dict = {source: 0.0}
+    prev: dict = {source: None}
+
+    heap: list = [(0.0, source)]
+    visited: set = set()
 
     while heap:
         cost, u = heapq.heappop(heap)
@@ -35,46 +49,43 @@ def dijkstra_single_source(
         visited.add(u)
 
         for v in graph.neighbors(u):
-            edge_cost = edge_weight(graph, u, v)
-            link_id   = edge_linkid(graph, u, v)
-            new_cost  = cost + edge_cost
+            edge_cost = _edge_weight(graph, u, v)
+            new_cost = cost + edge_cost
 
             if new_cost < dist.get(v, INF):
                 dist[v] = new_cost
-                prev[v] = (u, link_id)
+                prev[v] = u
                 heapq.heappush(heap, (new_cost, v))
 
-
-    rt = RoutingTable(owner_id=source)
+    rt = RoutingTable(router_id=source)
 
     for dst in dist:
         if dst == source:
             continue
         if dist[dst] == INF:
-            continue  
+            continue
 
+        # Walk back from dst to find the first hop after source
         node = dst
-        first_hop_router: RouterId = dst
-        first_hop_link: LinkId = None  
+        first_hop: str = dst
 
         while prev[node] is not None:
-            parent, link = prev[node]
+            parent = prev[node]
             if parent == source:
-                first_hop_router = node
-                first_hop_link   = link
+                first_hop = node
                 break
             node = parent
 
-        rt.add_entry(dst=dst, next_hop=first_hop_router, link_id=first_hop_link)
+        link = links.get((source, first_hop))
+        if link is not None:
+            rt.add_route(destination=dst, next_hop=first_hop, link=link)
 
     return rt
 
 
-def compute_all_routing_tables(
-    graph: nx.Graph,
-) -> Dict[RouterId, RoutingTable]:
-    
-    tables: Dict[RouterId, RoutingTable] = {}
+def compute_all_routing_tables(graph: nx.DiGraph, links: dict) -> dict:
+    tables: dict = {}
     for node in graph.nodes:
-        tables[node] = dijkstra_single_source(graph, source=node)
+        tables[node] = dijkstra_single_source(graph, source=node, links=links)
+        log.debug("Dijkstra table built for %s", node)
     return tables

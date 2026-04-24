@@ -79,7 +79,13 @@ class Network:
     ):
         link = Link(self.env, source, destination, bandwidth, delay)
         self.links[(source, destination)] = link
-        self.graph.add_edge(source, destination, weight=link.cost, link=link,link_id=(source,destination))
+        self.graph.add_edge(
+            source,
+            destination,
+            weight=link.cost,
+            link=link,
+            link_id=(source, destination),
+        )
 
     # build the router and compute the routuing table using the given algorithm
     def build(self):
@@ -111,8 +117,12 @@ class Network:
         )
 
     # fallback algorithm in case the user specify routing algorithm is not specify
-    # may get remove in future
     def fall_back_routing_algorithm(self) -> dict[str, RoutingTable]:
+
+        # Define a custom weight evaluator
+        def _weight_func(u, v, d):
+            w = d.get("weight", 1)
+            return w() if callable(w) else float(w)
 
         tables: dict[str, RoutingTable] = {}
 
@@ -123,8 +133,9 @@ class Network:
                 if destination == source:
                     continue
                 try:
+                    # Apply the custom weight function here
                     path = nx.shortest_path(
-                        self.graph, source, destination, weight="weight"
+                        self.graph, source, destination, weight=_weight_func
                     )
                     if len(path) >= 2:
                         next_hop = path[1]

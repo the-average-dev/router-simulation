@@ -1,4 +1,4 @@
-# filename: traffic/packet_factory
+# filename: traffic/packet_factory.py
 
 """
 The File Defines the PacketFactory Class
@@ -31,16 +31,14 @@ class PacketFactory:
         self.mean_size = traffic_cfg.get("packet_size_mean", 512)
         self.counter = 0
 
-        # Create a packet
-
-    def create(self, source, destination, birth_time):
+    def create(self, source: str, destination: str, arrival_time: float) -> Packet:
 
         self.counter += 1
         traffic_class = random.choices(self.classes, weights=self.weights, k=1)[0]
 
         mean_size = TrafficClass.MEAN_SIZE.get(traffic_class, self.mean_size)
 
-        size = int(max(64, min(1500, random.expovariate(1.0 / mean_size))))  
+        size = int(max(64, min(1500, random.expovariate(1.0 / mean_size))))
 
         return Packet(
             id=self.counter,
@@ -48,5 +46,5 @@ class PacketFactory:
             source=source,
             destination=destination,
             traffic_type=traffic_class,
-            arrival_time=birth_time,
+            arrival_time=arrival_time,
         )

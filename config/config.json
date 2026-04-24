@@ -1,25 +1,36 @@
 {
   "simulation": {
-    "duration": 1000,
-    "random_seed": 42
+    "duration": 5000,
+    "random_seed": 420
   },
   "traffic": {
-    "arrival_rate": 0.8,
-    "packet_size_mean": 512,
+    "arrival_rate": 200,
+    "packet_size_mean": 1024,
     "classes": ["voip", "bulk", "best_effort"],
-    "class_weights": [0.2, 0.4, 0.4]
+    "class_weights": [0.2, 0.5, 0.3]
   },
   "network": {
-    "topology": "linear",
-    "num_routers": 5,
-    "link_bandwidth": 1000000,
-    "link_delay": 0.002
+    "topology": "mesh",
+    "num_routers": 10,
+    "link_bandwidth": 200000,
+    "link_delay": 0.005,
+    "link_probability": 0.6
   },
   "queueing": {
-    "discipline": "fifo",
-    "queue_cap": 50
+    "discipline": "wfq",
+    "queue_cap": 100,
+    "wfq_weights": { "1": 5.0, "2": 2.0, "3": 1.0 },
+    "red_p_max": 0.15,
+    "red_wq": 0.002
   },
   "routing": {
-    "algorithm": "dijkstra"
+    "algorithm": "bellman_ford"
+  },
+  "events": {
+    "link_failure": {
+      "enabled": true,
+      "trigger_time": 300,
+      "duration": 500
+    }
   }
 }

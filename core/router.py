@@ -41,7 +41,6 @@ class Router:
 
     # get the packet from queue one by one and forward them
     def forwarding_loop(self):
-
         while True:
             if self.queue.length() == 0:
                 self.packet_ready = self.env.event()
@@ -51,7 +50,6 @@ class Router:
             if packet is None:
                 continue
 
-            # get the entry from next hop from routing table
             route = self.routing_table.next_hop(packet.dst)
 
             if route is None:
@@ -62,11 +60,9 @@ class Router:
                     packet.dst,
                     packet,
                 )
-
                 self.collector.on_drop(self.id, packet, self.env.now)
                 continue
 
-            # get the next router id and link
             next_hop_id, link = route
             log.debug(
                 "%.4f  %s forwarding %s → %s via %s",
@@ -77,35 +73,43 @@ class Router:
                 link,
             )
 
-            self.collector.on_forward(self.id, packet, next_hop_id, self.env.now)
-            # wait for it to transmit
-            yield from link.transmit(packet)
+            # wait for it to transmit, capture the success status
+            success = yield from link.transmit(packet)
 
-            # hand the packet to next router, will get the next router via callback
-            if self.deliver_to is not None:
-                next_router = self.deliver_to(next_hop_id)
-                if next_router is not None:
-                    next_router.receive(packet)
+            if success:
+                # ONLY record as forwarded if the link actually carried it
+                self.collector.on_forward(self.id, packet, next_hop_id, self.env.now)
+
+                # hand the packet to next router
+                if self.deliver_to is not None:
+                    next_router = self.deliver_to(next_hop_id)
+                    if next_router is not None:
+                        next_router.receive(packet)
+            else:
+                # The link was down! Tell the collector we dropped it.
+                self.collector.on_drop(self.id, packet, self.env.now)
 
     # will called by network
     def set_delivery_callback(self, callback):
         self.deliver_to = callback
 
     # called when packet arrives at this router interface
+
     def receive(self, packet: Packet):
         log.debug("%.4f  %s received %s", self.env.now, self.id, packet)
-        self.collector.on_arrival(self.id, packet, self.env.now)
 
         if packet.dst == self.id:
             log.debug("%.4f  %s DELIVERED %s", self.env.now, self.id, packet)
             self.collector.on_deliver(packet, self.env.now)
             return
 
+        # MOVE THIS HERE: Only count as an arrival if it didn't get delivered
+        self.collector.on_arrival(self.id, packet, self.env.now)
+
         accepted = self.queue.enqueue(packet)
 
         if accepted:
             self.collector.on_enqueue(self.id, packet, self.env.now)
-
             if not self.packet_ready.triggered:
                 self.packet_ready.succeed()
         else:

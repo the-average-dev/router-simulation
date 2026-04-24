@@ -73,23 +73,67 @@ class Simulation:
         self.topology_factory(network, self.config)
         network.build()
 
+        try:
+            from viz.plot_topology import TopologyPlotter
+            seed = self.config["simulation"]["random_seed"]
+            TopologyPlotter(network, out_dir="graphs",seed=seed).plot()
+        except ImportError:
+            pass
+
         env.process(self.traffic_generator(env, network, self.config))
+
+        failure_cfg = self.config.get("events", {}).get("link_failure", {})
+        if failure_cfg.get("enabled", False):
+
+            def chaos_monkey(env, net, cfg):
+                trigger_time = cfg.get("trigger_time", duration / 2)
+                fail_duration = cfg.get("duration", 100)
+
+                yield env.timeout(trigger_time)
+
+                if len(net.links) > 0:
+                    edge = random.choice(list(net.links.keys()))
+                    src, dst = edge
+
+                    log.warning(
+                        f"*** CHAOS MONKEY: Destroying link {src} <-> {dst} at t={env.now} ***"
+                    )
+                    net.take_down_link(src, dst)
+                    net.take_down_link(dst, src)
+
+                    algo = self.config.get("routing", {}).get("algorithm")
+                    if algo in ["bellman_ford", "dijkstra"]:
+                        log.warning(
+                            f"*** CHAOS MONKEY: Recalculating routes using {algo}... ***"
+                        )
+                        new_tables = self.routing_algorithm(net.graph, net.links)
+                        for r_id, r_obj in net.routers.items():
+                            r_obj.routing_table = new_tables.get(
+                                r_id, r_obj.routing_table
+                            )
+
+                    yield env.timeout(fail_duration)
+
+                    log.warning(
+                        f"*** CHAOS MONKEY: Repairing link {src} <-> {dst} at t={env.now} ***"
+                    )
+                    net.bring_up_link(src, dst)
+                    net.bring_up_link(dst, src)
+
+                    if algo in ["bellman_ford", "dijkstra"]:
+                        log.warning(
+                            f"*** CHAOS MONKEY: Recalculating routes using {algo}... ***"
+                        )
+                        new_tables = self.routing_algorithm(net.graph, net.links)
+                        for r_id, r_obj in net.routers.items():
+                            r_obj.routing_table = new_tables.get(
+                                r_id, r_obj.routing_table
+                            )
+
+            env.process(chaos_monkey(env, network, failure_cfg))
 
         log.info("Running simulation for %.1f time units...", duration)
         env.run(until=duration)
         log.info("Simulation complete.")
-        
-        return self.collector
-        
 
-    # load a json config file and return as dict
-    def load_config(self, path: str) -> dict:
-        try:
-            with open(path, "r") as f:
-                return json.load(f)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Config file not found: {path}")
-        except json.JSONDecodeError:
-            raise ValueError(f"Invalid JSON in config file: {path}")
-        except Exception as e:
-            raise RuntimeError(f"Error loading config: {e}")
+        return self.collector

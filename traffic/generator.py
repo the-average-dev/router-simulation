@@ -2,7 +2,7 @@
 
 """
 The File Defines the Generator Function
-A simpy process that genrates the packets following a Poisson arrival process
+A simpy process that generates the packets following a Poisson arrival process
 """
 
 import logging
@@ -21,10 +21,13 @@ def generator(env: Environment, network: Network, config: dict):
     if "traffic" not in config:
         raise KeyError("Missing 'traffic' section in config")
 
-    if "arrival_rate" not in config:
-        raise KeyError("Missing 'arrival_rate' section in config")
+    if "arrival_rate" not in config["traffic"]:
+        raise KeyError("Missing 'arrival_rate' in config['traffic']")
 
     arrival_rate = config["traffic"]["arrival_rate"]
+    if arrival_rate <= 0:
+        log.warning("Arrival rate is 0. No traffic will be generated.")
+        return
     factory = PacketFactory(config)
     router_ids = network.router_ids()
 
@@ -47,7 +50,7 @@ def generator(env: Environment, network: Network, config: dict):
         destination = random.choice(pool)
 
         packet = factory.create(
-            source=source, destination=destination, birth_time=env.now
+            source=source, destination=destination, arrival_time=env.now
         )
         log.debug("%.4f  Generated %s", env.now, packet)
         network.inject(packet, at_router=source)

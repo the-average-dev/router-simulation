@@ -68,12 +68,13 @@ class PerRouterMetrics:
     # Returns list of (timestamp, queue_length) tuples
     def _compute_queue_length(self, router_id: str) -> list[tuple[float, int]]:
 
-        # collect all relevant events for this router and sort by time
         events: list[tuple[float, str]] = []
+        enqueued_packets = set()  # Track packets that actually made it into the queue
 
         for e in self.collector.enqueues:
             if e.router_id == router_id:
                 events.append((e.time, "enqueue"))
+                enqueued_packets.add(e.packet_id)
 
         for e in self.collector.forwards:
             if e.router_id == router_id:
@@ -81,10 +82,14 @@ class PerRouterMetrics:
 
         for e in self.collector.drops:
             if e.router_id == router_id:
-                events.append((e.time, "drop"))
+                # Only decrement if the dropped packet was previously inside the queue
+                if e.packet_id in enqueued_packets:
+                    events.append((e.time, "drop"))
 
-        # sort all events by timestamp
-        events.sort(key=lambda x: x[0])
+        order_priority = {"enqueue": 1, "forward": 2, "drop": 2}
+
+        # Sort by timestamp first, then by the priority order defined above
+        events.sort(key=lambda x: (x[0], order_priority[x[1]]))
 
         # walk through events and track running queue length
         queue_length = 0
@@ -150,11 +155,12 @@ class PerRouterMetrics:
     def print_summary(self) -> None:
         stats = self.compute()
         print(
-            f"\n{'Router':<10} {'Arrivals':<12} {'Enqueued':<12} {'Dropped':<10} {'Drop Rate':<12} {'Utilization'}"
+            # Changed 'Utilization' to 'Acceptance'
+            f"\n{'Router':<10} {'Arrivals':<12} {'Enqueued':<12} {'Dropped':<10} {'Drop Rate':<12} {'Acceptance'}"
         )
         print("-" * 65)
         for router_id, s in sorted(stats.items()):
             print(
                 f"{s.router_id:<10} {s.total_arrivals:<12} {s.total_enqueued:<12} "
-                f"{s.total_dropped:<10} {s.drop_rate:<12.2%} {s.utilization:.2%}"
+                f"{s.total_dropped:<10} {s.drop_rate:<12.2%} {s.utilization:.2%}"  #
             )
