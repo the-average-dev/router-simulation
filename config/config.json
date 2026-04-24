@@ -1,0 +1,25 @@
+{
+  "simulation": {
+    "duration": 1000,
+    "random_seed": 42
+  },
+  "traffic": {
+    "arrival_rate": 0.8,
+    "packet_size_mean": 512,
+    "classes": ["voip", "bulk", "best_effort"],
+    "class_weights": [0.2, 0.4, 0.4]
+  },
+  "network": {
+    "topology": "linear",
+    "num_routers": 5,
+    "link_bandwidth": 1000000,
+    "link_delay": 0.002
+  },
+  "queueing": {
+    "discipline": "fifo",
+    "queue_cap": 50
+  },
+  "routing": {
+    "algorithm": "dijkstra"
+  }
+}

@@ -79,7 +79,7 @@ class Network:
     ):
         link = Link(self.env, source, destination, bandwidth, delay)
         self.links[(source, destination)] = link
-        self.graph.add_edge(source, destination, weight=link.cost, link=link)
+        self.graph.add_edge(source, destination, weight=link.cost, link=link,link_id=(source,destination))
 
     # build the router and compute the routuing table using the given algorithm
     def build(self):
