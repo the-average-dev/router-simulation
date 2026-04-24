@@ -7,6 +7,7 @@ LinkId   = Hashable
 NextHopEntry = Tuple[RouterId, LinkId]
 
 
+
 class RoutingTable:
 
     def __init__(self, id: RouterId) -> None:
