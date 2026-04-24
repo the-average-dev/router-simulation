@@ -10,7 +10,6 @@ and Plots Two Graphs:
 import logging
 import matplotlib.pyplot as plt
 from metrics.per_router import PerRouterMetrics
-from metrics.end_to_end import EndToEndMetrics
 from metrics.collector import MetricsCollector
 
 logger = logging.getLogger(__name__)
@@ -81,7 +80,7 @@ class MetricsPlotter:
         stats = per_router.compute()
 
         router_ids = sorted(stats.keys())
-        drop_rates = [stats[r].drop_rate   * 100 for r in router_ids]
+        drop_rates = [stats[r].drop_rate * 100 for r in router_ids]
         utilizations = [stats[r].utilization * 100 for r in router_ids]
 
         # x positions for the bars
