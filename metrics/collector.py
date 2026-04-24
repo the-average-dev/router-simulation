@@ -4,8 +4,7 @@ This File Defines the MetricsCollector Class
 MetricsCollector Passively Listens to Events Fired by router.py
 and Records them for Later Analysis by per_router.py and end_to_end.py
 
-Contract File — Person A's router.py calls these methods directly.
-Do NOT rename or change method signatures without team discussion.
+Contract File — Harshal's router.py calls these methods directly.
 """
 
 import logging
